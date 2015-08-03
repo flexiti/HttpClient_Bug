@@ -9,7 +9,6 @@
 #endif
 
 
-
 Timer procTimer;
 int sensorValue = 0;
 HttpClient thingSpeak;

@@ -2,17 +2,26 @@
 #include <SmingCore/SmingCore.h>
 
 // If you want, you can define WiFi settings globally in Eclipse Environment Variables
+
 #ifndef WIFI_SSID
 	#define WIFI_SSID "PleaseEnterSSID" // Put you SSID and Password here
 	#define WIFI_PWD "PleaseEnterPass"
 #endif
 
+
 Timer procTimer;
 int sensorValue = 0;
 HttpClient thingSpeak;
+bool server = true;
 
 void onDataSent(HttpClient& client, bool successful)
 {
+
+	if (server)
+	  Serial.print("ThingSpeak server connection: ");
+	else
+	  Serial.print("Non existing server connection: ");
+
 	if (successful)
 		Serial.println("Success sent");
 	else
@@ -27,6 +36,13 @@ void onDataSent(HttpClient& client, bool successful)
 		if (intVal == 0)
 			Serial.println("Sensor value wasn't accepted. May be we need to wait a little?");
 	}
+
+	if (server)
+		server = false;
+	else
+		server = true;
+
+	Serial.println("==============");
 }
 
 void sendData()
@@ -36,7 +52,11 @@ void sendData()
 	// Read our sensor value :)
 	sensorValue++;
 
-	thingSpeak.downloadString("http://api.thingspeak.com/update?key=7XXUJWCWYTMXKN3L&field1=" + String(sensorValue), onDataSent);
+	if (server)
+	   thingSpeak.downloadString("http://api.thingspeak.com/update?key=7XXUJWCWYTMXKN3L&field1=" + String(sensorValue), onDataSent);
+	else
+		thingSpeak.downloadString("http://192.168.0.8/update?key=7XXUJWCWYTMXKN3L&field1=" + String(sensorValue), onDataSent);
+
 }
 
 // Will be called when WiFi station was connected to AP
@@ -45,7 +65,7 @@ void connectOk()
 	Serial.println("I'm CONNECTED");
 
 	// Start send data loop
-	procTimer.initializeMs(25 * 1000, sendData).start(); // every 25 seconds
+	procTimer.initializeMs(25 * 1000, sendData).start(true); // every 25 seconds
 }
 
 // Will be called when WiFi station timeout was reached
@@ -68,6 +88,9 @@ void init()
 	WifiStation.config(WIFI_SSID, WIFI_PWD);
 	WifiStation.enable(true);
 	WifiAccessPoint.enable(false);
+
+
+	Serial.println("Bug: after first connection to non exidting server , thingspeak also finish with errors");
 
 	// Run our method when station was connected to AP (or not connected)
 	WifiStation.waitConnection(connectOk, 20, connectFail); // We recommend 20+ seconds for connection timeout at start
